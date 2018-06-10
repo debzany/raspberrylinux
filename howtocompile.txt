@@ -1,0 +1,62 @@
+// How to compile a raspberry pi linux
+
+// Clone the source code from a git repository
+git clone --depth=1 https://github.com/raspberrypi/linux
+
+// Get the cross-compiler and place it in  root/tools from the git repo
+git clone https://github.com/raspberrypi/tools ~/tools
+
+// Add the cross-compiler executables on the path variable so that make tool is able to find the compiler 
+echo PATH=\$PATH:~/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin >> ~/.bashrc
+source ~/.bashrc
+
+// Compile the source code  using the def config - bcm2709 is the name of Broadcom 2709 - System on Chip which is based on ARM architecture
+cd linux
+KERNEL=kernel7
+make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- bcm2709_defconfig
+
+// Compile the device tree
+make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage modules dtbs
+
+//Create the partition on the SD card
+// Create two partition on the sd card one primary and one extended partition
+format the first partition with fat32
+command:- mkdosfs -F 32 -I /dev/sdc1
+sample site:- https://www.garron.me/en/go2linux/format-usb-drive-fat32-file-system-ubuntu-linux.html
+
+// create the second partition and format with ext4
+command:- mkfs.ext4 /dev/sdb2
+
+// Create the mount in the source code directory
+mkdir mnt
+mkdir mnt/fat32
+mkdir mnt/ext4
+
+// Mount the partitions.
+mount /dev/sdb1 mnt/fat32
+mount /dev/sdb2 mnt/ext4
+
+// This will install the modules
+make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- INSTALL_MOD_PATH=mnt/ext4 modules_install
+
+// Copy all the contents in the sd card.
+cp arch/arm/boot/zImage mnt/fat32/$KERNEL.img
+cp arch/arm/boot/dts/*.dtb mnt/fat32/
+
+// Create the overlay folder
+mkdir mnt/fat32/overlay
+
+// Once done follow th foloowing steps
+cp arch/arm/boot/dts/overlays/*.dtb* mnt/fat32/overlays/
+cp arch/arm/boot/dts/overlays/README mnt/fat32/overlays/
+
+// Unmount the partitions, beacuse we want to boot now :)
+umount mnt/fat32
+umount mnt/ext4
+
+
+
+
+
+
+
